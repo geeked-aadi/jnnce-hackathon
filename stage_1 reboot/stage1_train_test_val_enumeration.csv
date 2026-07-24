@@ -1,0 +1,5 @@
+Split,Num_Patients,Purpose
+BraTS2020 - Train,295,Model training (enhancement + segmentation) - Stage 3 & 4
+BraTS2020 - Internal Validation,74,Hyperparameter tuning / early stopping - Stage 3 & 4
+Hackathon Dataset - Normal (Test/Val),10,External validation of enhancement quality on unseen normal anatomy
+Hackathon Dataset - Pathological (Test/Val),10,External validation of ROI segmentation on unseen pathology
