@@ -9,5 +9,5 @@ flair = df[df["modality"] == "FLAIR"]
 
 t1.to_csv("T1.csv", index=False)
 t2.to_csv("T2.csv", index=False)
-t1ce.to_csv("T1CE.csv", index=False)
+t1ce.to_csv("T1ce.csv", index=False)
 flair.to_csv("FLAIR.csv", index=False)
