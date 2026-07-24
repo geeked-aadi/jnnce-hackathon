@@ -1,0 +1,6 @@
+# Ignore zip archives and local dataset folders
+*.zip
+
+# Ignore dataset folder contents
+Brain_JN_1
+Spine DATASETS
