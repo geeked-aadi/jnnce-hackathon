@@ -60,6 +60,8 @@ async def inference(
 
     return JSONResponse({
         "preview_base64": result["preview_base64"],
+        "overlay_base64": result["overlay_base64"],
+        "label_stats": result["label_stats"],
         "download_url": "/download",
     })
 

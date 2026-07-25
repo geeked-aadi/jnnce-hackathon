@@ -20,7 +20,7 @@
     border-radius: 12px;
     padding: 32px;
     width: 100%;
-    max-width: 480px;
+    max-width: 560px;
   }
   h1 { font-size: 20px; margin: 0 0 4px; }
   p.sub { color: #9ca3af; font-size: 13px; margin: 0 0 24px; }
@@ -56,6 +56,39 @@
   #status { margin-top: 16px; font-size: 13px; color: #9ca3af; min-height: 18px; }
   #status.error { color: #f87171; }
   #status.success { color: #4ade80; }
+  #legend {
+    margin-top: 20px;
+    text-align: left;
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13px;
+  }
+  #legend th {
+    text-align: left;
+    color: #9ca3af;
+    font-weight: 500;
+    padding: 6px 8px;
+    border-bottom: 1px solid #262a36;
+  }
+  #legend td {
+    padding: 8px;
+    border-bottom: 1px solid #1e2129;
+  }
+  .swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  #no-tumor {
+    display: none;
+    margin-top: 16px;
+    font-size: 13px;
+    color: #9ca3af;
+    text-align: center;
+  }
 </style>
 </head>
 <body>
@@ -82,6 +115,21 @@
 
     <div id="result" style="display:none; margin-top:24px; text-align:center;">
       <img id="preview-img" style="max-width:100%; border-radius:8px; border:1px solid #262a36;">
+
+      <table id="legend">
+        <thead>
+          <tr>
+            <th>Label</th>
+            <th>Voxels</th>
+            <th>Volume (cm³)</th>
+            <th>% of scan</th>
+          </tr>
+        </thead>
+        <tbody id="legend-body"></tbody>
+      </table>
+
+      <p id="no-tumor">No tumor regions detected in this scan.</p>
+
       <button id="download-btn" style="margin-top:16px;">Download .nii.gz</button>
     </div>
   </div>
@@ -93,6 +141,9 @@ const btn = document.getElementById("submit-btn");
 const resultEl = document.getElementById("result");
 const previewImg = document.getElementById("preview-img");
 const downloadBtn = document.getElementById("download-btn");
+const legendBody = document.getElementById("legend-body");
+const legendTable = document.getElementById("legend");
+const noTumorEl = document.getElementById("no-tumor");
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -116,7 +167,27 @@ form.addEventListener("submit", async (e) => {
 
     const data = await res.json();
 
-    previewImg.src = "data:image/png;base64," + data.preview_base64;
+    previewImg.src = "data:image/png;base64," + data.overlay_base64;
+
+    legendBody.innerHTML = "";
+    if (data.label_stats && data.label_stats.length > 0) {
+      legendTable.style.display = "table";
+      noTumorEl.style.display = "none";
+      data.label_stats.forEach(stat => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><span class="swatch" style="background:${stat.color}"></span>${stat.name}</td>
+          <td>${stat.voxel_count.toLocaleString()}</td>
+          <td>${stat.volume_cm3}</td>
+          <td>${stat.percent_of_volume}%</td>
+        `;
+        legendBody.appendChild(row);
+      });
+    } else {
+      legendTable.style.display = "none";
+      noTumorEl.style.display = "block";
+    }
+
     downloadBtn.onclick = () => {
       window.location.href = data.download_url;
     };

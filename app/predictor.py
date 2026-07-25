@@ -58,8 +58,9 @@ from io import BytesIO
 
 def generate_preview(flair_path, mask):
     """
-    Builds a PNG of the middle axial slice: FLAIR in grayscale with the
-    predicted tumor mask overlaid in color. Returns a base64-encoded PNG string.
+    Builds two base64 PNGs of the middle axial slice:
+    1) the raw FLAIR slice
+    2) the same slice with the predicted tumor mask overlaid in color
     """
     flair_img = nib.load(flair_path).get_fdata()
 
@@ -78,18 +79,62 @@ def generate_preview(flair_path, mask):
     overlay[mask_slice == 2] = [0, 1, 0]   # whole tumor (edema) - green
     overlay[mask_slice == 4] = [1, 0, 0]   # enhancing tumor - red
 
-    fig, ax = plt.subplots(figsize=(5, 5))
-    ax.imshow(np.rot90(flair_slice), cmap="gray")
-    ax.imshow(np.rot90(overlay), alpha=0.4)
-    ax.axis("off")
+    def fig_to_base64(render_fn):
+        fig, ax = plt.subplots(figsize=(5, 5))
+        render_fn(ax)
+        ax.axis("off")
+        buf = BytesIO()
+        plt.savefig(buf, format="png", bbox_inches="tight", pad_inches=0)
+        plt.close(fig)
+        buf.seek(0)
+        return base64.b64encode(buf.read()).decode("utf-8")
 
-    buf = BytesIO()
-    plt.savefig(buf, format="png", bbox_inches="tight", pad_inches=0)
-    plt.close(fig)
-    buf.seek(0)
+    original_base64 = fig_to_base64(
+        lambda ax: ax.imshow(np.rot90(flair_slice), cmap="gray")
+    )
 
-    encoded = base64.b64encode(buf.read()).decode("utf-8")
-    return encoded
+    def render_overlay(ax):
+        ax.imshow(np.rot90(flair_slice), cmap="gray")
+        ax.imshow(np.rot90(overlay), alpha=0.4)
+
+    overlay_base64 = fig_to_base64(render_overlay)
+
+    return original_base64, overlay_base64
+
+
+LABELS = {
+    1: {"name": "Tumor Core", "color": "#facc15"},       # yellow
+    2: {"name": "Whole Tumor (Edema)", "color": "#22c55e"},  # green
+    4: {"name": "Enhancing Tumor", "color": "#ef4444"},  # red
+}
+
+
+def compute_label_stats(mask, affine):
+    """
+    Returns per-class voxel counts and physical volume (cm^3) present in the mask.
+    Only includes classes that actually appear in the prediction.
+    """
+    voxel_dims = np.abs(np.diag(affine)[:3])  # mm per voxel in x, y, z
+    voxel_volume_mm3 = float(np.prod(voxel_dims))
+
+    stats = []
+    total_voxels = mask.size
+
+    for class_id, info in LABELS.items():
+        voxel_count = int(np.sum(mask == class_id))
+        if voxel_count == 0:
+            continue
+        volume_cm3 = (voxel_count * voxel_volume_mm3) / 1000.0
+        stats.append({
+            "label": class_id,
+            "name": info["name"],
+            "color": info["color"],
+            "voxel_count": voxel_count,
+            "volume_cm3": round(volume_cm3, 2),
+            "percent_of_volume": round(100 * voxel_count / total_voxels, 3),
+        })
+
+    return stats
 
 
 def predict(flair, t1, t1ce, t2):
@@ -135,9 +180,12 @@ def predict(flair, t1, t1ce, t2):
 
     nib.save(out, output_path)
 
-    preview_base64 = generate_preview(flair, mask)
+    preview_base64, overlay_base64 = generate_preview(flair, mask)
+    label_stats = compute_label_stats(mask, reference.affine)
 
     return {
         "nifti_path": output_path,
         "preview_base64": preview_base64,
+        "overlay_base64": overlay_base64,
+        "label_stats": label_stats,
     }
