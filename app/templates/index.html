@@ -1,60 +1,136 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>Brain Tumor Segmentation</title>
+<meta charset="UTF-8">
+<title>Brain Tumor Segmentation (BraTS)</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    background: #0f1117;
+    color: #e5e7eb;
+    display: flex;
+    justify-content: center;
+    padding: 48px 16px;
+    margin: 0;
+  }
+  .card {
+    background: #171a23;
+    border: 1px solid #262a36;
+    border-radius: 12px;
+    padding: 32px;
+    width: 100%;
+    max-width: 480px;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.sub { color: #9ca3af; font-size: 13px; margin: 0 0 24px; }
+  label {
+    display: block;
+    font-size: 13px;
+    margin: 16px 0 6px;
+    color: #cbd5e1;
+  }
+  input[type="file"] {
+    width: 100%;
+    padding: 8px;
+    background: #0f1117;
+    border: 1px solid #2c3140;
+    border-radius: 8px;
+    color: #e5e7eb;
+    font-size: 13px;
+  }
+  button {
+    margin-top: 24px;
+    width: 100%;
+    padding: 12px;
+    background: #4f46e5;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled { background: #383c4a; cursor: not-allowed; }
+  #download-btn { background: #16a34a; }
+  #status { margin-top: 16px; font-size: 13px; color: #9ca3af; min-height: 18px; }
+  #status.error { color: #f87171; }
+  #status.success { color: #4ade80; }
+</style>
 </head>
-
 <body>
+  <div class="card">
+    <h1>BraTS Segmentation</h1>
+    <p class="sub">Upload all four MRI modalities (NIfTI, .nii or .nii.gz) to run inference.</p>
 
-<h1>Brain MRI Segmentation</h1>
+    <form id="predict-form">
+      <label for="flair">FLAIR</label>
+      <input type="file" id="flair" name="flair" accept=".nii,.nii.gz" required>
 
-<form id="form">
+      <label for="t1">T1</label>
+      <input type="file" id="t1" name="t1" accept=".nii,.nii.gz" required>
 
-FLAIR
-<input type="file" name="flair"><br><br>
+      <label for="t1ce">T1ce</label>
+      <input type="file" id="t1ce" name="t1ce" accept=".nii,.nii.gz" required>
 
-T1
-<input type="file" name="t1"><br><br>
+      <label for="t2">T2</label>
+      <input type="file" id="t2" name="t2" accept=".nii,.nii.gz" required>
 
-T1CE
-<input type="file" name="t1ce"><br><br>
+      <button type="submit" id="submit-btn">Run Inference</button>
+      <div id="status"></div>
+    </form>
 
-T2
-<input type="file" name="t2"><br><br>
-
-<button>Predict</button>
-
-</form>
-
-<pre id="result"></pre>
+    <div id="result" style="display:none; margin-top:24px; text-align:center;">
+      <img id="preview-img" style="max-width:100%; border-radius:8px; border:1px solid #262a36;">
+      <button id="download-btn" style="margin-top:16px;">Download .nii.gz</button>
+    </div>
+  </div>
 
 <script>
+const form = document.getElementById("predict-form");
+const statusEl = document.getElementById("status");
+const btn = document.getElementById("submit-btn");
+const resultEl = document.getElementById("result");
+const previewImg = document.getElementById("preview-img");
+const downloadBtn = document.getElementById("download-btn");
 
-const form=document.getElementById("form")
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  btn.disabled = true;
+  statusEl.className = "";
+  statusEl.textContent = "Running inference... this may take a while on CPU.";
+  resultEl.style.display = "none";
 
-form.onsubmit=async(e)=>{
+  const formData = new FormData(form);
 
-e.preventDefault()
+  try {
+    const res = await fetch("/predict", {
+      method: "POST",
+      body: formData
+    });
 
-const fd=new FormData(form)
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `Request failed with status ${res.status}`);
+    }
 
-const r=await fetch("/predict",{
+    const data = await res.json();
 
-method:"POST",
-body:fd
+    previewImg.src = "data:image/png;base64," + data.preview_base64;
+    downloadBtn.onclick = () => {
+      window.location.href = data.download_url;
+    };
 
-})
-
-const j=await r.json()
-
-document.getElementById("result").innerText=
-JSON.stringify(j,null,2)
-
-}
-
+    resultEl.style.display = "block";
+    statusEl.className = "success";
+    statusEl.textContent = "Done — preview generated below.";
+  } catch (err) {
+    statusEl.className = "error";
+    statusEl.textContent = "Error: " + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
 </script>
-
 </body>
-
 </html>
