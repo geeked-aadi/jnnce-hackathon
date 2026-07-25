@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Brain Tumor Segmentation</title>
+</head>
+
+<body>
+
+<h1>Brain MRI Segmentation</h1>
+
+<form id="form">
+
+FLAIR
+<input type="file" name="flair"><br><br>
+
+T1
+<input type="file" name="t1"><br><br>
+
+T1CE
+<input type="file" name="t1ce"><br><br>
+
+T2
+<input type="file" name="t2"><br><br>
+
+<button>Predict</button>
+
+</form>
+
+<pre id="result"></pre>
+
+<script>
+
+const form=document.getElementById("form")
+
+form.onsubmit=async(e)=>{
+
+e.preventDefault()
+
+const fd=new FormData(form)
+
+const r=await fetch("/predict",{
+
+method:"POST",
+body:fd
+
+})
+
+const j=await r.json()
+
+document.getElementById("result").innerText=
+JSON.stringify(j,null,2)
+
+}
+
+</script>
+
+</body>
+
+</html>
