@@ -56,6 +56,20 @@
   #status { margin-top: 16px; font-size: 13px; color: #9ca3af; min-height: 18px; }
   #status.error { color: #f87171; }
   #status.success { color: #4ade80; }
+  #viewer-container {
+    margin-top: 20px;
+    border: 1px solid #262a36;
+    border-radius: 10px;
+    padding: 8px;
+    background: #0f1117;
+  }
+  #viewer-frame {
+    width: 100%;
+    min-height: 480px;
+    border: none;
+    border-radius: 8px;
+    background: #0f1117;
+  }
   #legend {
     margin-top: 20px;
     text-align: left;
@@ -116,6 +130,8 @@
     <div id="result" style="display:none; margin-top:24px; text-align:center;">
       <img id="preview-img" style="max-width:100%; border-radius:8px; border:1px solid #262a36;">
 
+      <div id="viewer-container" style="display:none;"><iframe id="viewer-frame" title="3D segmentation viewer"></iframe></div>
+
       <table id="legend">
         <thead>
           <tr>
@@ -140,6 +156,8 @@ const statusEl = document.getElementById("status");
 const btn = document.getElementById("submit-btn");
 const resultEl = document.getElementById("result");
 const previewImg = document.getElementById("preview-img");
+const viewerContainer = document.getElementById("viewer-container");
+const viewerFrame = document.getElementById("viewer-frame");
 const downloadBtn = document.getElementById("download-btn");
 const legendBody = document.getElementById("legend-body");
 const legendTable = document.getElementById("legend");
@@ -168,6 +186,8 @@ form.addEventListener("submit", async (e) => {
     const data = await res.json();
 
     previewImg.src = "data:image/png;base64," + data.overlay_base64;
+    viewerFrame.srcdoc = data.viewer_html || "";
+    viewerContainer.style.display = data.viewer_html ? "block" : "none";
 
     legendBody.innerHTML = "";
     if (data.label_stats && data.label_stats.length > 0) {

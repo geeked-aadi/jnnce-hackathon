@@ -7,6 +7,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from monai.networks.nets import SegResNet
+from viewer import build_mask_viewer_html
+from anatomy import register_and_label, tumor_region_overlap
 from monai.transforms import (
     Compose,
     LoadImaged,
@@ -182,10 +184,27 @@ def predict(flair, t1, t1ce, t2):
 
     preview_base64, overlay_base64 = generate_preview(flair, mask)
     label_stats = compute_label_stats(mask, reference.affine)
+    atlas_native, label_names = register_and_label(flair)  # flair = path string
+    tumor_overlaps = {
+        label: tumor_region_overlap(mask, atlas_native, label_names, label)
+        for label in [1, 2, 4]
+    }
+
+    viewer_html, _ = build_mask_viewer_html(
+        mask,
+        brain=reference.get_fdata(),
+        title="3D Tumor Segmentation",
+        voxel_volume_cm3=float(np.prod(np.abs(np.diag(reference.affine)[:3]))) / 1000.0,
+        spacing=reference.header.get_zooms()[:3],
+        atlas_native=atlas_native,
+        label_names=label_names,
+        tumor_region_overlaps=tumor_overlaps,
+    )
 
     return {
         "nifti_path": output_path,
         "preview_base64": preview_base64,
         "overlay_base64": overlay_base64,
         "label_stats": label_stats,
+        "viewer_html": viewer_html,
     }

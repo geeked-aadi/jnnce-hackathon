@@ -62,6 +62,7 @@ async def inference(
         "preview_base64": result["preview_base64"],
         "overlay_base64": result["overlay_base64"],
         "label_stats": result["label_stats"],
+        "viewer_html": result["viewer_html"],
         "download_url": "/download",
     })
 
